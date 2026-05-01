@@ -27,31 +27,6 @@ struct string_hash {
   }
 };
 
-std::string escape_html(std::string_view sv) {
-  std::string r;
-  r.reserve(sv.size());
-  for(char c : sv) {
-    switch(c) {
-      case '&':
-        r += "&amp;";
-        break;
-      case '<':
-        r += "&lt;";
-        break;
-      case '>':
-        r += "&gt;";
-        break;
-      case '"':
-        r += "&quot;";
-        break;
-      default:
-        r += c;
-        break;
-    }
-  }
-  return r;
-}
-
 std::string_view channel_id(std::string_view ch) {
   if(!ch.empty() && ch[0] == '#')
     return ch.substr(1);
@@ -193,10 +168,8 @@ export class irc_client {
   void inject_message(std::string_view target, std::string_view author, std::string_view text) {
     std::println("[irc] inject_message {} <{}>: {}", target, author, text);
     auto ch = channel_id(target);
-    auto author_escaped = escape_html(author);
-    auto text_escaped = escape_html(text);
-    push_chunk(std::format(
-        "{}", web_irc::gen::message{.channel = ch, .timestamp = utc_timestamp(), .author = author_escaped, .content = text_escaped}));
+
+    push_chunk(std::format("{}", web_irc::gen::message{.channel = ch, .timestamp = utc_timestamp(), .author = author, .content = text}));
   }
 
  private:
@@ -231,8 +204,7 @@ export class irc_client {
 
   void push_system_message(std::string_view channel, std::string_view text) {
     auto ch = channel_id(channel);
-    push_chunk(
-        std::format("{}", web_irc::gen::message{.channel = ch, .timestamp = utc_timestamp(), .author = "*", .content = escape_html(text)}));
+    push_chunk(std::format("{}", web_irc::gen::message{.channel = ch, .timestamp = utc_timestamp(), .author = "*", .content = text}));
   }
 
   void push_status(std::string_view text) {
@@ -311,13 +283,15 @@ export class irc_client {
   awaitable<void> handle(const mirc::event::priv_msg& e) {
     std::println("[irc] priv_msg #{} <{}>: {}", e.target, e.prefix.nick, e.text);
     auto ch = channel_id(e.target);
-    auto nick_escaped = escape_html(e.prefix.nick);
-    auto text_sv = std::string_view(e.text);
-    bool is_action = text_sv.size() > 8 && text_sv.starts_with("\001ACTION ") && text_sv.ends_with("\001");
-    auto content = is_action ? std::format("{} {}", nick_escaped, escape_html(text_sv.substr(8, text_sv.size() - 9))) : escape_html(e.text);
+    bool is_action = e.text.size() > 8 && e.text.starts_with("\001ACTION ") && e.text.ends_with("\001");
+
     push_chunk(std::format(
         "{}",
-        web_irc::gen::message{.channel = ch, .timestamp = utc_timestamp(), .author = is_action ? "*" : nick_escaped, .content = content}));
+        web_irc::gen::message{.channel = ch,
+                              .timestamp = utc_timestamp(),
+                              .author = is_action ? "*" : e.prefix.nick,
+                              .content = is_action ? std::format("{} {}", e.prefix.nick, e.text.substr(8, e.text.size() - 9)) : e.text}));
+
     co_return;
   }
 

@@ -2,6 +2,7 @@
 import web_irc.core;
 import web_irc.gen;
 import web_irc.irc;
+import web_irc.range_string_formatter;
 import std;
 import boost;
 import ctre;
@@ -14,25 +15,6 @@ struct connection_entry {
   std::shared_ptr<web_irc::irc_client> irc;
 };
 
-template <std::ranges::input_range Range>
-struct range_string_formatter {
-  Range range;
-};
-
-template <std::ranges::input_range Range>
-struct std::formatter<range_string_formatter<Range>> {
-  constexpr auto parse(std::format_parse_context& ctx) {
-    return ctx.begin();
-  }
-
-  auto format(const range_string_formatter<Range>& rf, std::format_context& ctx) const {
-    for(auto elem : rf.range) {
-      *ctx.out() = elem;
-    }
-    return ctx.out();
-  }
-};
-
 static std::string generate_uuid() {
   static std::mutex mtx;
   static std::mt19937_64 gen([] {
@@ -40,7 +22,6 @@ static std::string generate_uuid() {
     if(!urandom) {
       throw std::runtime_error("Cannot open /dev/urandom");
     }
-
 
     alignas(std::uint64_t) char arr[sizeof(std::uint64_t)];
     urandom.read(arr, sizeof(std::uint64_t));
@@ -70,12 +51,12 @@ static std::string generate_uuid() {
   };
 
   return std::format("{}-{}-4{}-{}{}-{}",
-                     range_string_formatter{generate_segment(8)},
-                     range_string_formatter{generate_segment(4)},
-                     range_string_formatter{generate_segment(3)},
+                     web_irc::range_string_formatter{generate_segment(8)},
+                     web_irc::range_string_formatter{generate_segment(4)},
+                     web_irc::range_string_formatter{generate_segment(3)},
                      random_variant(),
-                     range_string_formatter{generate_segment(3)},
-                     range_string_formatter{generate_segment(12)});
+                     web_irc::range_string_formatter{generate_segment(3)},
+                     web_irc::range_string_formatter{generate_segment(12)});
 }
 
 static std::string url_decode(std::string_view sv) {

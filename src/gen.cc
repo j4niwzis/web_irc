@@ -1,7 +1,12 @@
 export module web_irc.gen;
 import std;
+import web_irc.range_string_formatter;
 
 namespace web_irc::gen {
+
+constexpr auto to_array(auto... args) {
+  return std::to_array<char>({static_cast<char>(args)...});
+}
 
 namespace html {
 
@@ -16,61 +21,71 @@ export inline constexpr std::string_view page_end = [] -> std::string_view {
 
 }  // namespace html
 
+constexpr auto escape_html(std::string_view input) {
+  return input | std::views::transform([](const char& c) -> std::string_view {
+           switch(c) {
+             case '&':
+               return "&amp;";
+             case '<':
+               return "&lt;";
+             case '>':
+               return "&gt;";
+             case '"':
+               return "&quot;";
+             case '\'':
+               return "&#39;";
+             default:
+               return std::string_view{&c, 1};
+           }
+         }) |
+         std::views::join;
+}
+
 namespace fmt {
 
-constexpr auto channel_rules = std::to_array<char>({
+constexpr auto channel_rules = to_array(
 #embed "../templates/channel_rules.css.fmt"
-    , 0});
+    , 0);
 
-constexpr auto page_begin = std::to_array<char>({// NOLINT
+constexpr auto page_begin = to_array(
 #embed "../templates/page.html.fmt"
-                                                 ,
-                                                 0});
+    , 0);
 
-constexpr auto tab = std::to_array<char>({// NOLINT
+constexpr auto tab = to_array(
 #embed "../templates/tab.html.fmt"
-                                          ,
-                                          0});
+    , 0);
 
-constexpr auto topic = std::to_array<char>({// NOLINT
+constexpr auto topic = to_array(
 #embed "../templates/topic.html.fmt"
-                                            ,
-                                            0});
+    , 0);
 
-constexpr auto message = std::to_array<char>({// NOLINT
+constexpr auto message = to_array(
 #embed "../templates/message.html.fmt"
-                                              ,
-                                              0});
+    , 0);
 
-constexpr auto user = std::to_array<char>({// NOLINT
+constexpr auto user = to_array(
 #embed "../templates/user.html.fmt"
-                                           ,
-                                           0});
+    , 0);
 
-constexpr auto user_hide = std::to_array<char>({// NOLINT
+constexpr auto user_hide = to_array(
 #embed "../templates/user_hide.html.fmt"
-                                                ,
-                                                0});
+    , 0);
 
-constexpr auto user_show = std::to_array<char>({// NOLINT
+constexpr auto user_show = to_array(
 #embed "../templates/user_show.html.fmt"
-                                                ,
-                                                0});
+    , 0);
 
-constexpr auto form_page = std::to_array<char>({// NOLINT
+constexpr auto form_page = to_array(
 #embed "../templates/form_page.html.fmt"
-                                                ,
-                                                0});
+    , 0);
 
-constexpr auto composer_frame = std::to_array<char>({// NOLINT
+constexpr auto composer_frame = to_array(
 #embed "../templates/composer_frame.html.fmt"
-                                                     ,
-                                                     0});
+    , 0);
 
-constexpr auto bottom_anchor = std::to_array<char>({// NOLINT
+constexpr auto bottom_anchor = to_array(
 #embed "../templates/bottom_anchor.html.fmt"
-                                                    ,
-                                                    0});
+    , 0);
 
 }  // namespace fmt
 
@@ -137,11 +152,11 @@ export struct channel {
   std::string_view connection_id;
 };
 
-template <typename T, auto fmt, typename Char>
+template <typename T, auto& fmt, typename Char>
 struct formatter_helper {
   [[nodiscard]] constexpr auto format(T obj, auto& ctx) const {
     auto [... vs] = obj;
-    return std::format_to(ctx.out(), fmt.data(), vs...);
+    return std::format_to(ctx.out(), fmt.data(), range_string_formatter{escape_html(vs)}...);
   }
   [[nodiscard]] constexpr auto parse(auto& ctx) const {
     return ctx.begin();
@@ -161,7 +176,7 @@ export template <typename Char>
 struct std::formatter<tab, Char> {
   [[nodiscard]] constexpr auto format(tab t, auto& ctx) const {
     auto prefix = t.show_hash ? "#" : "";
-    return std::format_to(ctx.out(), web_irc::gen::fmt::tab.data(), t.id, prefix);
+    return std::format_to(ctx.out(), web_irc::gen::fmt::tab.data(), web_irc::range_string_formatter{escape_html(t.id)}, prefix);
   }
   [[nodiscard]] constexpr auto parse(auto& ctx) const {
     return ctx.begin();
@@ -218,11 +233,3 @@ export template struct std::formatter<channel, char>;
 
 export template struct std::formatter<user_hide, char>;
 export template struct std::formatter<user_show, char>;
-
-namespace {
-
-inline void fix() {
-  std::ignore = std::format("{}", tab{.id = ""});  // idk why but code can't be compiled without it
-}
-
-}  // namespace
