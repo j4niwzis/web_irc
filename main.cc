@@ -14,20 +14,68 @@ struct connection_entry {
   std::shared_ptr<web_irc::irc_client> irc;
 };
 
-static std::string generate_uuid() {
-  static std::random_device rd;
-  static std::mt19937 gen(rd());
-  static std::uniform_int_distribution<> dis(0, 15);
-  static std::uniform_int_distribution<> dis2(8, 11);
+template <std::ranges::input_range Range>
+struct range_string_formatter {
+  Range range;
+};
 
-  auto hex = [&](int count) {
-    return std::views::iota(0, count) | std::views::transform([&](int) {
-             return "0123456789abcdef"[dis(gen)];
-           }) |
-           std::ranges::to<std::string>();
+template <std::ranges::input_range Range>
+struct std::formatter<range_string_formatter<Range>> {
+  constexpr auto parse(std::format_parse_context& ctx) {
+    return ctx.begin();
+  }
+
+  auto format(const range_string_formatter<Range>& rf, std::format_context& ctx) const {
+    for(auto elem : rf.range) {
+      *ctx.out() = elem;
+    }
+    return ctx.out();
+  }
+};
+
+static std::string generate_uuid() {
+  static std::mutex mtx;
+  static std::mt19937_64 gen([] {
+    std::ifstream urandom("/dev/urandom", std::ios::binary);
+    if(!urandom) {
+      throw std::runtime_error("Cannot open /dev/urandom");
+    }
+
+
+    alignas(std::uint64_t) char arr[sizeof(std::uint64_t)];
+    urandom.read(arr, sizeof(std::uint64_t));
+    if(!urandom) {
+      throw std::runtime_error("Failed to read from /dev/urandom");
+    }
+
+    return std::bit_cast<std::uint64_t>(arr);
+  }());
+
+  std::lock_guard<std::mutex> lock(mtx);
+
+  constexpr std::array<char, 16> hex_chars = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+
+  auto random_hex = [&]() {
+    return hex_chars[std::uniform_int_distribution<>(0, 15)(gen)];
   };
 
-  return hex(8) + "-" + hex(4) + "-4" + hex(3) + "-" + "0123456789abcdef"[dis2(gen)] + hex(3) + "-" + hex(12);
+  auto random_variant = [&]() {
+    return hex_chars[std::uniform_int_distribution<>(8, 11)(gen)];
+  };
+
+  auto generate_segment = [&](int count) {
+    return std::views::iota(0, count) | std::views::transform([&](int) {
+             return random_hex();
+           });
+  };
+
+  return std::format("{}-{}-4{}-{}{}-{}",
+                     range_string_formatter{generate_segment(8)},
+                     range_string_formatter{generate_segment(4)},
+                     range_string_formatter{generate_segment(3)},
+                     random_variant(),
+                     range_string_formatter{generate_segment(3)},
+                     range_string_formatter{generate_segment(12)});
 }
 
 static std::string url_decode(std::string_view sv) {
