@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{0}</title>
+
+<link rel="stylesheet" href="/static/page.css">
+<link rel="stylesheet" href="/static/client.css">
+</head>
+<body>
+
+<web-client>
+  <template shadowrootmode="open">
+    <link rel="stylesheet" href="/static/shadow.css">
+
+    <div class="chrome"><slot></slot></div>
+
+    <div class="columns">
+      <div class="messages-col">
+        <div class="messages-scroll"><slot name="messages"></slot></div>
+        <div class="composer"><slot name="composer"></slot></div>
+      </div>
+
+      <div class="users-col"><slot name="users"></slot></div>
+    </div>
+  </template>
+
+  <input type="checkbox" id="users-toggle" class="inject-state">
+  <label class="burger-btn" for="users-toggle">☰ Users</label>

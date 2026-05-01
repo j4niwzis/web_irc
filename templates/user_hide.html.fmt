@@ -1,0 +1,1 @@
+<style>web-client:has(#tab-{0}:target) .user-{0}-{1}{{display:none !important}}</style>

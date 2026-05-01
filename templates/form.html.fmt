@@ -1,0 +1,5 @@
+<form slot="composer" class="inject-form-{0}" action="/send_message?channel={0}" method="post" target="void">
+    <input type="hidden" name="connection_id" value="{2}">
+    <input type="text" name="message" placeholder="{1}" autocomplete="off">
+    <button type="submit">Send</button>
+</form>

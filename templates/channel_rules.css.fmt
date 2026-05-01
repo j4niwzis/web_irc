@@ -1,0 +1,26 @@
+  <style>
+    web-client:has(#tab-{0}:target) .inject-item-page-element-{0},
+    web-client:has(#tab-{0}:target) .inject-users-{0} {{
+      display: block;
+    }}
+
+    web-client:has(#tab-{0}:target) .inject-frame-{0} {{
+      display: block;
+    }}
+
+    web-client:has(#tab-{0}:target) .inject-topic.page-{0} {{
+      display: block;
+    }}
+
+    web-client:has(#tab-{0}:target) .tab-{0} {{
+      background: #666; border-color: #777; color: #fff; font-weight: bold;
+    }}
+
+    web-client:has(#tab-{0}:target) #tab-{0} {{
+      display: block;
+    }}
+
+    web-client:has(#tab-{0}:target) .jump-{0} {{
+      display: block;
+    }}
+  </style>

@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:4px;background:#111;font-family:'Courier New',Courier,monospace;">
+<form action="/send_message?channel={0}" method="post" target="_self" style="display:flex;gap:4px;width:100%;margin:0;">
+    <input type="hidden" name="connection_id" value="{2}">
+    <input type="text" name="message" placeholder="{1}" autocomplete="off" style="flex:1;min-width:0;background:#000;border:1px solid #333;color:#bbb;padding:3px 6px;font-family:'Courier New',Courier,monospace;font-size:11px;outline:none;">
+    <button type="submit" style="background:#333;border:1px solid #444;color:#aaa;padding:3px 10px;font-family:'Courier New',Courier,monospace;font-size:11px;cursor:pointer;">Send</button>
+</form>
+</body>
+</html>
