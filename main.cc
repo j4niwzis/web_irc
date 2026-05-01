@@ -165,7 +165,7 @@ static awaitable<void> send_welcome_chunks(boost::beast::tcp_stream& stream, std
 
   co_await web_irc::send_stream_chunk(stream, page_begin);
 
-  auto [... content] = std::tuple{"0.1.0",
+  auto [... content] = std::tuple{WEB_IRC_VERSION,
                                   "Copyright (C) 2026 j4niwzis",
                                   "https://github.com/j4niwzis/web_irc",
                                   "Licensed under the GNU Affero General Public License, Version 3."};
