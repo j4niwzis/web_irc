@@ -3,6 +3,7 @@ module;
 export module web_irc.core;
 import std;
 export import boost;
+import web_irc.config;
 
 inline void log_exception(std::exception_ptr ep, std::FILE* out, std::string_view tag) {
   if(!ep) {
@@ -24,11 +25,6 @@ using asio::awaitable;
 
 export using request_t = http::request<http::string_body>;
 
-export struct server_config {
-  std::string bind_address = "0.0.0.0";
-  unsigned short port = 8080;
-};
-
 export std::string utc_timestamp() {
   auto now = std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now());
   auto hms = std::chrono::hh_mm_ss(now.time_since_epoch() % std::chrono::days(1));
@@ -43,7 +39,7 @@ awaitable<void> send_message(beast::tcp_stream& stream, http::response<Body, Fie
 export awaitable<void> send_text_response(
     beast::tcp_stream& stream, unsigned version, http::status status, std::string body, bool keep_alive = false) {
   http::response<http::string_body> res{status, version};
-  res.set(http::field::server, "web-irc");
+  res.set(http::field::server, config.short_name);
   res.set(http::field::content_type, "text/plain; charset=utf-8");
   res.keep_alive(keep_alive);
   res.body() = std::move(body);
@@ -55,7 +51,7 @@ export awaitable<void> send_text_response(
 export awaitable<void> send_html_response(
     beast::tcp_stream& stream, unsigned version, http::status status, std::string body, bool keep_alive = false) {
   http::response<http::string_body> res{status, version};
-  res.set(http::field::server, "web-irc");
+  res.set(http::field::server, config.short_name);
   res.set(http::field::content_type, "text/html; charset=utf-8");
   res.keep_alive(keep_alive);
   res.body() = std::move(body);
@@ -72,7 +68,7 @@ export awaitable<void> send_binary_response(beast::tcp_stream& stream,
                                             bool keep_alive = false) {
   using body_t = http::vector_body<std::uint8_t>;
   http::response<body_t> res{status, version};
-  res.set(http::field::server, "web-irc");
+  res.set(http::field::server, config.short_name);
   res.set(http::field::content_type, content_type);
   res.keep_alive(keep_alive);
   res.body() = std::move(data);
@@ -87,7 +83,7 @@ export awaitable<void> send_not_found(beast::tcp_stream& stream, unsigned versio
 
 export awaitable<void> send_redirect(beast::tcp_stream& stream, unsigned version, std::string_view location) {
   http::response<http::string_body> res{http::status::see_other, version};
-  res.set(http::field::server, "web-irc");
+  res.set(http::field::server, config.short_name);
   res.set(http::field::location, location);
   res.keep_alive(false);
   res.body() = "";
@@ -136,12 +132,12 @@ export awaitable<void> serve_connection(auto&& handle_request, boost::asio::ip::
   stream.socket().shutdown(boost::asio::ip::tcp::socket::shutdown_send, ec);
 }
 
-export boost::asio::awaitable<void> listener(auto&& handle_request, server_config cfg) {
+export boost::asio::awaitable<void> listener(auto&& handle_request) {
   auto ex = co_await boost::asio::this_coro::executor;
+  auto address = static_cast<std::string>(config.connection.address);
+  boost::asio::ip::tcp::acceptor acceptor(ex, {boost::asio::ip::make_address(address), config.connection.port});
 
-  boost::asio::ip::tcp::acceptor acceptor(ex, {boost::asio::ip::make_address(cfg.bind_address), cfg.port});
-
-  std::println("[listen] http://{}:{}/", cfg.bind_address, cfg.port);
+  std::println("[listen] http://{}:{}/", address, config.connection.port);
 
   for(;;) {
     boost::asio::ip::tcp::socket socket = co_await acceptor.async_accept(boost::asio::use_awaitable);

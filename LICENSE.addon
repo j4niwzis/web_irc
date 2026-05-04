@@ -1,0 +1,14 @@
+Additional permission under AGPLv3 section 7:
+
+You are not required to include configuration include files (such as
+config.inc, or similar files containing deployment-specific
+constants) in the Corresponding Source that you provide under section 13,
+provided that:
+
+1. These files contain only deployment-specific parameters (e.g., TCP
+   ports, file paths, hostnames, credentials, boolean feature toggles)
+   and do not introduce new program logic, algorithms, or control-flow
+   modifications beyond what those parameters control;
+2. A template or example version of such file (e.g., config.inc.example)
+   is included in the Corresponding Source so that recipients can still
+   build the Program.

@@ -3,6 +3,7 @@ import web_irc.core;
 import web_irc.gen;
 import web_irc.irc;
 import web_irc.range_string_formatter;
+import web_irc.config;
 import std;
 import boost;
 import ctre;
@@ -191,19 +192,19 @@ template <auto = 0>
 static awaitable<void> send_welcome_chunks(boost::beast::tcp_stream& stream, std::string_view uuid, std::string_view nick) {
   auto ts = web_irc::utc_timestamp();
   auto page_begin = std::format("{}{}",
-                                web_irc::gen::page_begin{.title = "Web IRC"},
+                                web_irc::gen::page_begin{.title = web_irc::config.name},
                                 web_irc::gen::channel{.id = "status", .topic = {}, .form_placeholder = "Message", .connection_id = uuid});
 
   co_await web_irc::send_stream_chunk(stream, page_begin);
 
-  auto [... content] = std::tuple{WEB_IRC_VERSION,
-                                  "Copyright (C) 2026 j4niwzis",
-                                  "https://github.com/j4niwzis/web_irc",
+  auto [... content] = std::tuple{web_irc::config.version,
+                                  web_irc::config.copyright,
+                                  web_irc::config.url,
                                   "Licensed under the GNU Affero General Public License, Version 3."};
   co_await web_irc::send_stream_chunk(
       stream,
       std::format("{}{}{}{}",
-                  web_irc::gen::message{.channel = "status", .timestamp = ts, .author = "web-irc", .content = content}...,
+                  web_irc::gen::message{.channel = "status", .timestamp = ts, .author = web_irc::config.short_name, .content = content}...,
                   web_irc::gen::message{
                       .channel = "status", .timestamp = ts, .author = "*", .content = std::format("Connecting to IRC as {}...", nick)}));
 }
@@ -237,7 +238,7 @@ awaitable<void> stream_main_page(asio::io_context& io,
   std::exception_ptr ep;
   try {
     http::response<http::empty_body> res{http::status::ok, version};
-    res.set(http::field::server, "web-irc");
+    res.set(http::field::server, web_irc::config.short_name);
     res.set(http::field::content_type, "text/html; charset=utf-8");
     res.chunked(true);
 
@@ -329,7 +330,7 @@ static awaitable<void> send_form_response(boost::beast::tcp_stream& stream,
                                           std::string_view connection_id) {
   auto placeholder = form_placeholder(channel);
   http::response<http::string_body> res{http::status::ok, version};
-  res.set(http::field::server, "web-irc");
+  res.set(http::field::server, web_irc::config.short_name);
   res.set(http::field::content_type, "text/html; charset=utf-8");
   res.set(http::field::cache_control, "no-store, no-cache, must-revalidate");
   res.keep_alive(false);
@@ -420,13 +421,12 @@ awaitable<void> handle_request(asio::io_context& io,
 
   if(req.method() == http::verb::get && path == "/connect_form") {
     auto nick = std::format("WebClient{}", next_nicid++);
-    auto channels = std::string("#test");
     http::response<http::string_body> res{http::status::ok, version};
-    res.set(http::field::server, "web-irc");
+    res.set(http::field::server, web_irc::config.short_name);
     res.set(http::field::content_type, "text/html; charset=utf-8");
     res.set(http::field::cache_control, "no-store, no-cache, must-revalidate");
     res.keep_alive(false);
-    res.body() = std::format("{}", web_irc::gen::connect_form{.default_nick = nick, .default_channels = channels});
+    res.body() = std::format("{}", web_irc::gen::connect_form{.default_nick = nick, .default_channels = web_irc::config.default_channels});
     res.prepare_payload();
     co_await web_irc::send_message(stream, std::move(res));
     co_return;
@@ -440,15 +440,12 @@ awaitable<void> handle_request(asio::io_context& io,
       co_await web_irc::send_text_response(stream, version, http::status::bad_request, "missing nick");
       co_return;
     }
-
-    web_irc::irc_config cfg;
-    cfg.nickname = std::move(nick);
+    web_irc::irc_config cfg{.server = static_cast<std::string>(web_irc::config.irc_server.address),
+                            .port = web_irc::config.irc_server.port,
+                            .nickname = std::move(nick),
+                            .realname = static_cast<std::string>(web_irc::config.realname),
+                            .channels = parse_channels(channels_raw)};
     cfg.username = cfg.nickname;
-    cfg.realname = "Web IRC Client";
-    cfg.channels = parse_channels(channels_raw);
-    if(cfg.channels.empty())
-      cfg.channels.push_back("#test");
-
     co_await stream_main_page(io, connections, stream, version, std::move(cfg));
     co_return;
   }
@@ -482,13 +479,11 @@ int main() {
     std::unordered_map<std::string, connection_entry> connections;
     int next_nicid = 1;
 
-    web_irc::server_config cfg;
-
     auto handler = [&](boost::beast::tcp_stream& stream, web_irc::request_t req) -> awaitable<void> {
       co_await handle_request(io, connections, next_nicid, stream, std::move(req));
     };
 
-    asio::co_spawn(io, web_irc::listener(handler, cfg), [](std::exception_ptr ep) {
+    asio::co_spawn(io, web_irc::listener(handler), [](std::exception_ptr ep) {
       if(ep) {
         try {
           std::rethrow_exception(ep);

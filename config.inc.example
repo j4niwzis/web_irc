@@ -1,0 +1,17 @@
+{
+  .name = "Web IRC",
+  .short_name = "web-irc",
+  .version = WEB_IRC_VERSION,
+  .copyright = "Copyright (C) 2026 j4niwzis",
+  .url = "https://github.com/j4niwzis/web_irc",
+  .realname = "Web IRC Client",
+  .default_channels = "#test",
+  .connection = {
+    .address = "0.0.0.0",
+    .port = 8080
+  },
+  .irc_server = {
+    .address = "127.0.0.1",
+    .port = 6667
+  }
+}

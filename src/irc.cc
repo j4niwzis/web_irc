@@ -11,12 +11,12 @@ namespace asio = boost::asio;
 using asio::awaitable;
 
 export struct irc_config {
-  std::string server = "localhost";
-  unsigned short port = 16667;
-  std::string nickname = "webirc";
-  std::string username = "webirc";
-  std::string realname = "Web IRC Client";
-  std::vector<std::string> channels = {"#test"};
+  std::string server;
+  unsigned short port;
+  std::string nickname;
+  std::string username;
+  std::string realname;
+  std::vector<std::string> channels;
 };
 
 namespace {
