@@ -1,0 +1,56 @@
+html, body {
+  overflow: hidden;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  height: 100dvh;
+  background: #000;
+  color: #888;
+  font-family: "Courier New", Courier, monospace;
+  padding: 20px;
+  overflow: hidden;
+}
+
+h1 {
+  font-size: 1.5rem;
+  color: #bbb;
+  margin: 0 0 0.5rem 0;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 300px;
+  border: 1px solid #333;
+  padding: 20px;
+}
+
+input[type="text"], button {
+  background: #111;
+  border: 1px solid #333;
+  color: #bbb;
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: inherit;
+  outline: none;
+}
+
+input[type="text"]:focus {
+  border-color: #666;
+}
+
+button {
+  cursor: pointer;
+  background: #222;
+}
+
+button:hover {
+  background: #333;
+}

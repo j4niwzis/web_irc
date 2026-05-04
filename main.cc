@@ -124,6 +124,20 @@ constexpr auto page_css = [] {
   return std::string_view(data, sizeof(data));
 }();
 
+constexpr auto connect_form_css = [] {
+  static constexpr char data[] = {
+#embed "static/connect_form.css"
+  };
+  return std::string_view(data, sizeof(data));
+}();
+
+constexpr auto landing_page_css = [] {
+  static constexpr char data[] = {
+#embed "static/landing_page.css"
+  };
+  return std::string_view(data, sizeof(data));
+}();
+
 }  // namespace
 
 static std::string_view trim_left(std::string_view sv) {
@@ -133,6 +147,23 @@ static std::string_view trim_left(std::string_view sv) {
 
 static std::string ensure_hash_prefix(std::string_view sv) {
   return sv.empty() || sv[0] == '#' ? std::string(sv) : std::format("#{}", sv);
+}
+
+static std::vector<std::string> parse_channels(std::string_view input) {
+  std::vector<std::string> result;
+  std::size_t start = 0;
+  while(start <= input.size()) {
+    auto end = input.find(' ', start);
+    auto part = input.substr(start, end == std::string_view::npos ? std::string_view::npos : end - start);
+    auto sv = trim_left(part);
+    auto ch = ensure_hash_prefix(sv);
+    if(!ch.empty())
+      result.push_back(std::move(ch));
+    if(end == std::string_view::npos)
+      break;
+    start = end + 1;
+  }
+  return result;
 }
 
 static std::string form_placeholder(std::string_view channel) {
@@ -180,16 +211,11 @@ static awaitable<void> send_welcome_chunks(boost::beast::tcp_stream& stream, std
 template <auto = 0>
 awaitable<void> stream_main_page(asio::io_context& io,
                                  std::unordered_map<std::string, connection_entry>& connections,
-                                 int& next_nicid,
                                  boost::beast::tcp_stream& stream,
-                                 unsigned version) {
+                                 unsigned version,
+                                 web_irc::irc_config cfg) {
   auto uuid = generate_uuid();
-  auto nick = std::format("WebClient{}", next_nicid++);
-
-  web_irc::irc_config cfg;
-  cfg.nickname = nick;
-  cfg.username = nick;
-  cfg.realname = "Web IRC Client";
+  auto nick = cfg.nickname;
 
   auto irc = std::make_shared<web_irc::irc_client>(io, std::move(cfg));
   irc->set_connection_id(uuid);
@@ -307,7 +333,7 @@ static awaitable<void> send_form_response(boost::beast::tcp_stream& stream,
   res.set(http::field::content_type, "text/html; charset=utf-8");
   res.set(http::field::cache_control, "no-store, no-cache, must-revalidate");
   res.keep_alive(false);
-  res.body() = std::format("{}", web_irc::gen::form_page{.channel = channel, .placeholder = placeholder, .connection_id = connection_id});
+  res.body() = std::format("{}", web_irc::gen::submit_form{.channel = channel, .placeholder = placeholder, .connection_id = connection_id});
   res.prepare_payload();
   co_await web_irc::send_message(stream, std::move(res));
 }
@@ -350,7 +376,7 @@ static awaitable<void> handle_send_message(std::unordered_map<std::string, conne
     }
   }
 
-  auto redirect_url = std::format("/form?channel={}&connection_id={}", channel, connection_id);
+  auto redirect_url = std::format("/submit_form?channel={}&connection_id={}", channel, connection_id);
   co_await web_irc::send_redirect(stream, version, redirect_url);
 }
 
@@ -362,8 +388,11 @@ static awaitable<void> serve_static_file(boost::beast::tcp_stream& stream, unsig
     co_return;
   }
 
-  static constexpr std::pair<std::string_view, std::string_view> files[] = {
-      {"client.css", client_css}, {"shadow.css", shadow_css}, {"page.css", page_css}};
+  static constexpr std::pair<std::string_view, std::string_view> files[] = {{"client.css", client_css},
+                                                                            {"shadow.css", shadow_css},
+                                                                            {"page.css", page_css},
+                                                                            {"connect_form.css", connect_form_css},
+                                                                            {"landing_page.css", landing_page_css}};
 
   auto it = std::ranges::find(files, file_name, &std::pair<std::string_view, std::string_view>::first);
   if(it == std::end(files)) {
@@ -385,7 +414,42 @@ awaitable<void> handle_request(asio::io_context& io,
   auto version = req.version();
 
   if(req.method() == http::verb::get && path == "/") {
-    co_await stream_main_page(io, connections, next_nicid, stream, version);
+    co_await web_irc::send_html_response(stream, version, http::status::ok, std::string(web_irc::gen::html::landing_page), false);
+    co_return;
+  }
+
+  if(req.method() == http::verb::get && path == "/connect_form") {
+    auto nick = std::format("WebClient{}", next_nicid++);
+    auto channels = std::string("#test");
+    http::response<http::string_body> res{http::status::ok, version};
+    res.set(http::field::server, "web-irc");
+    res.set(http::field::content_type, "text/html; charset=utf-8");
+    res.set(http::field::cache_control, "no-store, no-cache, must-revalidate");
+    res.keep_alive(false);
+    res.body() = std::format("{}", web_irc::gen::connect_form{.default_nick = nick, .default_channels = channels});
+    res.prepare_payload();
+    co_await web_irc::send_message(stream, std::move(res));
+    co_return;
+  }
+
+  if(req.method() == http::verb::post && path == "/stream") {
+    auto nick = extract_value(req.body(), "nick");
+    auto channels_raw = extract_value(req.body(), "channels");
+
+    if(nick.empty()) {
+      co_await web_irc::send_text_response(stream, version, http::status::bad_request, "missing nick");
+      co_return;
+    }
+
+    web_irc::irc_config cfg;
+    cfg.nickname = std::move(nick);
+    cfg.username = cfg.nickname;
+    cfg.realname = "Web IRC Client";
+    cfg.channels = parse_channels(channels_raw);
+    if(cfg.channels.empty())
+      cfg.channels.push_back("#test");
+
+    co_await stream_main_page(io, connections, stream, version, std::move(cfg));
     co_return;
   }
 
@@ -394,7 +458,7 @@ awaitable<void> handle_request(asio::io_context& io,
     co_return;
   }
 
-  if(req.method() == http::verb::get && path.starts_with("/form")) {
+  if(req.method() == http::verb::get && path.starts_with("/submit_form")) {
     auto query = std::string_view(path);
     if(auto qpos = query.find('?'); qpos != std::string_view::npos)
       query.remove_prefix(qpos + 1);

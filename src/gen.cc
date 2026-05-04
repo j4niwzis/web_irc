@@ -19,6 +19,15 @@ export inline constexpr std::string_view page_end = [] -> std::string_view {
   return {html, sizeof(html)};
 }();
 
+export inline constexpr std::string_view landing_page = [] -> std::string_view {
+  // NOLINTNEXTLINE
+  static constexpr const char html[] = {
+#embed "../templates/landing_page.html"
+  };
+  // NOLINTNEXTLINE
+  return {html, sizeof(html)};
+}();
+
 }  // namespace html
 
 constexpr auto escape_html(std::string_view input) {
@@ -75,8 +84,12 @@ constexpr auto user_show = to_array(
 #embed "../templates/user_show.html.fmt"
     , 0);
 
-constexpr auto form_page = to_array(
-#embed "../templates/form_page.html.fmt"
+constexpr auto submit_form = to_array(
+#embed "../templates/submit_form.html.fmt"
+    , 0);
+
+constexpr auto connect_form = to_array(
+#embed "../templates/connect_form.html.fmt"
     , 0);
 
 constexpr auto composer_frame = to_array(
@@ -133,7 +146,7 @@ export struct user_show {
   std::string_view user;
 };
 
-export struct form_page {
+export struct submit_form {
   std::string_view channel;
   std::string_view placeholder;
   std::string_view connection_id;
@@ -143,6 +156,10 @@ export struct composer_frame {
   std::string_view channel;
   std::string_view placeholder;
   std::string_view connection_id;
+};
+export struct connect_form {
+  std::string_view default_nick;
+  std::string_view default_channels;
 };
 
 export struct channel {
@@ -199,7 +216,10 @@ export template <typename Char>
 struct std::formatter<user_show, Char> : formatter_helper<user_show, web_irc::gen::fmt::user_show, Char> {};
 
 export template <typename Char>
-struct std::formatter<form_page, Char> : formatter_helper<form_page, web_irc::gen::fmt::form_page, Char> {};
+struct std::formatter<connect_form, Char> : formatter_helper<connect_form, web_irc::gen::fmt::connect_form, Char> {};
+
+export template <typename Char>
+struct std::formatter<submit_form, Char> : formatter_helper<submit_form, web_irc::gen::fmt::submit_form, Char> {};
 
 export template <typename Char>
 struct std::formatter<composer_frame, Char> : formatter_helper<composer_frame, web_irc::gen::fmt::composer_frame, Char> {};
@@ -226,7 +246,8 @@ export template struct std::formatter<tab, char>;
 export template struct std::formatter<topic, char>;
 export template struct std::formatter<message, char>;
 export template struct std::formatter<user, char>;
-export template struct std::formatter<form_page, char>;
+export template struct std::formatter<submit_form, char>;
+export template struct std::formatter<connect_form, char>;
 export template struct std::formatter<composer_frame, char>;
 export template struct std::formatter<bottom_anchor, char>;
 export template struct std::formatter<channel, char>;

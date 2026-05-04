@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connect to IRC</title>
+<link rel="stylesheet" href="/static/connect_form.css">
+</head>
+<body>
+<form action="/stream" method="post" target="_self">
+    <h1>Connect to IRC</h1>
+    <input type="text" name="nick" placeholder="Nickname" value="{0}" required>
+    <input type="text" name="channels" placeholder="Channels" value="{1}" required>
+    <button type="submit">Connect</button>
+</form>
+</body>
+</html>
