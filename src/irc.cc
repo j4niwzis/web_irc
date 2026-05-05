@@ -87,7 +87,8 @@ export class irc_client {
     std::erase(subs_, ch);
   }
 
-  awaitable<std::string> next_chunk(std::shared_ptr<chunk_channel> ch, std::chrono::seconds timeout = std::chrono::seconds(30)) {
+  awaitable<std::string> next_chunk(std::shared_ptr<chunk_channel> ch,
+                                    std::chrono::steady_clock::duration timeout = std::chrono::seconds(30)) {
     auto ex = co_await asio::this_coro::executor;
     asio::steady_timer timer(ex);
     timer.expires_after(timeout);
@@ -177,7 +178,8 @@ export class irc_client {
     std::println("[irc] inject_message {} <{}>: {}", target, author, text);
     auto ch = channel_id(target);
 
-    push_chunk(std::format("{}", web_irc::gen::message{.channel = ch, .timestamp = utc_timestamp(), .author = author, .content = text}));
+    push_chunk(std::format(
+        "{}", web_irc::gen::message{.channel = ch, .timestamp = utc_timestamp(), .author = author, .content = text, .author_class = ""}));
   }
 
  private:
@@ -212,7 +214,8 @@ export class irc_client {
 
   void push_system_message(std::string_view channel, std::string_view text) {
     auto ch = channel_id(channel);
-    push_chunk(std::format("{}", web_irc::gen::message{.channel = ch, .timestamp = utc_timestamp(), .author = "*", .content = text}));
+    push_chunk(std::format(
+        "{}", web_irc::gen::message{.channel = ch, .timestamp = utc_timestamp(), .author = "*", .content = text, .author_class = ""}));
   }
 
   void push_status(std::string_view text) {
@@ -293,12 +296,35 @@ export class irc_client {
     auto ch = channel_id(e.target);
     bool is_action = e.text.size() > 8 && e.text.starts_with("\001ACTION ") && e.text.ends_with("\001");
 
-    push_chunk(std::format(
-        "{}",
-        web_irc::gen::message{.channel = ch,
-                              .timestamp = utc_timestamp(),
-                              .author = is_action ? "*" : e.prefix.nick,
-                              .content = is_action ? std::format("{} {}", e.prefix.nick, e.text.substr(8, e.text.size() - 9)) : e.text}));
+    std::string_view author = is_action ? "*" : e.prefix.nick;
+    std::string content = is_action ? std::format("{} {}", e.prefix.nick, e.text.substr(8, e.text.size() - 9)) : std::string(e.text);
+
+    const bool is_mention = [&] {
+      if(e.prefix.nick == cfg_.nickname) {
+        return false;
+      }
+      auto lower_nick = cfg_.nickname | std::views::transform([](unsigned char c) {
+                          return std::tolower(c);
+                        });
+      auto lower_text = content | std::views::transform([](unsigned char c) {
+                          return std::tolower(c);
+                        });
+      if(std::ranges::contains_subrange(lower_text, lower_nick)) {
+        return true;
+      }
+      return false;
+    }();
+
+    push_chunk(std::format("{}",
+                           web_irc::gen::message{.channel = ch,
+                                                 .timestamp = utc_timestamp(),
+                                                 .author = author,
+                                                 .content = content,
+                                                 .author_class = is_mention ? " mention" : ""}));
+
+    if(is_mention) {
+      push_chunk("<audio autoplay src=\"/static/beep.wav\"></audio>");
+    }
 
     co_return;
   }

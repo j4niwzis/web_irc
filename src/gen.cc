@@ -148,6 +148,7 @@ export struct message {
   std::string_view timestamp;
   std::string_view author;
   std::string_view content;
+  std::string_view author_class;
 };
 
 export struct user {
