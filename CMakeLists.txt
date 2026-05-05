@@ -33,7 +33,7 @@ endif()
 
 include(cmake/CPM.cmake)
 
-CPMAddPackage("gh:j4niwzis/mirc@0.1.1")
+CPMAddPackage("gh:j4niwzis/mirc@0.2.0")
 
 find_package(Boost 1.88 REQUIRED)
 

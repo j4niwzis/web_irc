@@ -13,5 +13,10 @@
   .irc_server = {
     .address = "127.0.0.1",
     .port = 6667
+  },
+  .webirc = webirc::use{
+    .password = "webirc_password",
+    .gateway = "irc.local",
+    .real_ip_from_headers = true
   }
 }

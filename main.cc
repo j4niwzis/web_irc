@@ -446,6 +446,24 @@ awaitable<void> handle_request(asio::io_context& io,
                             .realname = static_cast<std::string>(web_irc::config.realname),
                             .channels = parse_channels(channels_raw)};
     cfg.username = cfg.nickname;
+
+    if constexpr(std::holds_alternative<web_irc::webirc::use>(web_irc::config.webirc)) {
+      constexpr auto const& w = std::get<web_irc::webirc::use>(web_irc::config.webirc);
+      if constexpr(w.real_ip_from_headers) {
+        auto forwarded = req["X-Forwarded-For"];
+        if(!forwarded.empty()) {
+          auto comma = forwarded.find(',');
+          cfg.real_ip = std::string(forwarded.substr(0, comma));
+        } else {
+          auto real_ip = req["X-Real-IP"];
+          cfg.real_ip = std::string(real_ip);
+        }
+      } else {
+        auto remote = stream.socket().remote_endpoint();
+        cfg.real_ip = remote.address().to_string();
+      }
+    }
+
     co_await stream_main_page(io, connections, stream, version, std::move(cfg));
     co_return;
   }

@@ -4,6 +4,7 @@ import boost;
 export import mirc;
 import web_irc.core;
 import web_irc.gen;
+import web_irc.config;
 
 namespace web_irc {
 
@@ -16,6 +17,7 @@ export struct irc_config {
   std::string nickname;
   std::string username;
   std::string realname;
+  std::string real_ip;
   std::vector<std::string> channels;
 };
 
@@ -113,6 +115,12 @@ export class irc_client {
     std::println("[irc] connecting to {}:{}", cfg_.server, cfg_.port);
     co_await asio::async_connect(socket_, endpoints, asio::use_awaitable);
     std::println("[irc] connected");
+
+    if constexpr(constexpr auto ptr = std::get_if<web_irc::webirc::use>(&web_irc::config.webirc)) {
+      const auto& w = *ptr;
+      co_await send(std::format(
+          "{}", mirc::client::webirc{.password = w.password, .login = cfg_.username, .hostname = w.gateway, .ip_address = cfg_.real_ip}));
+    }
 
     co_await send(std::format("{}", mirc::client::nick{.nickname = cfg_.nickname}));
     co_await send(std::format("{}", mirc::client::user{.username = cfg_.username, .realname = cfg_.realname}));

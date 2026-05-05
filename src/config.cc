@@ -8,6 +8,20 @@ export struct server_config {
   std::uint16_t port;
 };
 
+export namespace webirc {
+
+struct disable {};
+
+struct use {
+  std::string_view password;
+  std::string_view gateway;
+  bool real_ip_from_headers;
+};
+
+}  // namespace webirc
+
+export using webirc_t = std::variant<webirc::disable, webirc::use>;
+
 export constexpr struct {
   std::string_view name;
   std::string_view short_name;
@@ -18,6 +32,7 @@ export constexpr struct {
   std::string_view default_channels;
   server_config connection;
   server_config irc_server;
+  webirc_t webirc;
 } config
 #include "../config.inc"
     ;
