@@ -192,7 +192,7 @@ template <auto = 0>
 static awaitable<void> send_welcome_chunks(boost::beast::tcp_stream& stream, std::string_view uuid, std::string_view nick) {
   auto ts = web_irc::utc_timestamp();
   auto page_begin = std::format("{}{}",
-                                web_irc::gen::page_begin{.title = web_irc::config.name},
+                                web_irc::gen::page_begin{.title = web_irc::config.name, .connection_id = uuid},
                                 web_irc::gen::channel{.id = "status", .topic = {}, .form_placeholder = "Message", .connection_id = uuid});
 
   co_await web_irc::send_stream_chunk(stream, page_begin);
@@ -462,6 +462,22 @@ awaitable<void> handle_request(asio::io_context& io,
     auto channel = extract_value(query, "channel");
     auto connection_id = extract_value(query, "connection_id");
     co_await send_form_response(stream, version, channel, connection_id);
+    co_return;
+  }
+
+  if(req.method() == http::verb::get && path.starts_with("/connection_status")) {
+    auto query = std::string_view(path);
+    if(auto qpos = query.find('?'); qpos != std::string_view::npos)
+      query.remove_prefix(qpos + 1);
+    auto connection_id = extract_value(query, "connection_id");
+    auto it = connections.find(connection_id);
+    bool connected = it != connections.end() && it->second.irc && it->second.irc->is_connected();
+    co_await web_irc::send_html_response(
+        stream,
+        version,
+        http::status::ok,
+        std::string(connected ? web_irc::gen::html::connection_status_ok : web_irc::gen::html::connection_status_err),
+        false);
     co_return;
   }
 

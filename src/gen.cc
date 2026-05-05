@@ -28,6 +28,24 @@ export inline constexpr std::string_view landing_page = [] -> std::string_view {
   return {html, sizeof(html)};
 }();
 
+export inline constexpr std::string_view connection_status_ok = [] -> std::string_view {
+  // NOLINTNEXTLINE
+  static constexpr const char html[] = {
+#embed "../templates/connection_status_ok.html"
+  };
+  // NOLINTNEXTLINE
+  return {html, sizeof(html)};
+}();
+
+export inline constexpr std::string_view connection_status_err = [] -> std::string_view {
+  // NOLINTNEXTLINE
+  static constexpr const char html[] = {
+#embed "../templates/connection_status_err.html"
+  };
+  // NOLINTNEXTLINE
+  return {html, sizeof(html)};
+}();
+
 }  // namespace html
 
 constexpr auto escape_html(std::string_view input) {
@@ -108,6 +126,7 @@ export struct bottom_anchor {
 
 export struct page_begin {
   std::string_view title;
+  std::string_view connection_id;
 };
 
 export struct channel_rules {

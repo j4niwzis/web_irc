@@ -10,6 +10,8 @@
 </head>
 <body>
 
+<iframe src="/connection_status?connection_id={1}" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;height:120px;border:none;z-index:1000;background:transparent;pointer-events:none;"></iframe>
+
 <web-client>
   <template shadowrootmode="open">
     <link rel="stylesheet" href="/static/shadow.css">
