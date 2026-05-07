@@ -89,7 +89,7 @@ export std::vector<std::string> parse_channels(std::string_view input) {
   return result;
 }
 export std::string form_placeholder(std::string_view channel) {
-  if(channel.empty() || channel == "status") return "Message";
+  if(channel.empty()) return "Message";
   return std::format("Message for #{}", channel);
 }
 } // namespace web_irc

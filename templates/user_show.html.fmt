@@ -1,1 +1,1 @@
-<style>web-client:has(#tab-{0}:target) .user-{0}-{1}{{display:initial !important}}</style>
+<style>web-client:has({0:tab_href}:target) .user-{0:anchor_id}-{1}{{display:initial !important}}</style>

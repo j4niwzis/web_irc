@@ -1,1 +1,1 @@
-  <a class="inject-item tab-{0}" href="#tab-{0}">{1}{0}</a>
+  <a class="inject-item {0:tab_class}" href="{0:tab_href}">{0:tab_label}</a>

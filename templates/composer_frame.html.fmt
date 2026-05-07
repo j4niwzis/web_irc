@@ -1,1 +1,1 @@
-<iframe slot="composer" class="inject-frame-{0}" src="/submit_form?channel={0}&amp;connection_id={2}" style="border:none;width:100%;height:36px;background:transparent;" scrolling="no"></iframe>
+<iframe slot="composer" class="{0}" src="{1}" style="border:none;width:100%;height:36px;background:transparent;" scrolling="no"></iframe>

@@ -1,1 +1,1 @@
-<div slot="users" class="inject-users-{0} user-{0}-{1}">{1}</div>
+<div slot="users" class="{0:users_class} user-{0:anchor_id}-{1}">{1}</div>

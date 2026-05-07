@@ -71,6 +71,20 @@
   height: 36px;
 }
 
+/* Hide status channel content by default */
+.status-inject-item-page-element,
+.status-users {
+  display: none;
+}
+
+.status-frame {
+  display: none;
+}
+
+.status-topic {
+  display: none;
+}
+
 /* Common message appearance */
 [class*="inject-item-page-element-"] {
   padding: 2px 8px;
@@ -137,12 +151,12 @@ web-client:has(#users-toggle:checked) {
 }
 
 /* Default state: no :target -> show first tab */
-web-client:not(:has(:target)) .inject-item-page-element-status,
-web-client:not(:has(:target)) .inject-users-status       { display: block; }
-web-client:not(:has(:target)) .inject-frame-status       { display: block; }
-web-client:not(:has(:target)) .inject-topic.page-status  { display: block; }
-web-client:not(:has(:target)) .tab-status {
+web-client:not(:has(:target)) .status-inject-item-page-element,
+web-client:not(:has(:target)) .status-users       { display: block; }
+web-client:not(:has(:target)) .status-frame       { display: block; }
+web-client:not(:has(:target)) .status-topic       { display: block; }
+web-client:not(:has(:target)) .status-tab {
   background: #666; border-color: #777; color: #fff; font-weight: bold;
 }
-web-client:not(:has(:target)) #tab-status                { display: block; }
-web-client:not(:has(:target)) .jump-status               { display: block; }
+web-client:not(:has(:target)) #status-tab          { display: block; }
+web-client:not(:has(:target)) .status-jump         { display: block; }

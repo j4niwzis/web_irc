@@ -1,1 +1,1 @@
-<div slot="messages" class="inject-item-page-element-{0}">{1} &lt;<span class="author{4}">{2}</span>&gt; {3}</div>
+<div slot="messages" class="{0:msg_class}">{1} &lt;<span class="author{4}">{2}</span>&gt; {3}</div>

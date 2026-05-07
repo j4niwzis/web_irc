@@ -179,7 +179,13 @@ export class irc_client {
     auto ch = channel_id(target);
 
     push_chunk(std::format(
-        "{}", web_irc::gen::message{.channel = ch, .timestamp = utc_timestamp(), .author = author, .content = text, .author_class = ""}));
+        "{}", web_irc::gen::message{.ref = web_irc::gen::regular_channel{ch}, .timestamp = utc_timestamp(), .author = author, .content = text, .author_class = ""}));
+  }
+
+  void inject_status_message(std::string_view author, std::string_view text) {
+    std::println("[irc] inject_status_message <{}>: {}", author, text);
+    push_chunk(std::format(
+        "{}", web_irc::gen::message{.ref = web_irc::gen::status_channel{}, .timestamp = utc_timestamp(), .author = author, .content = text, .author_class = ""}));
   }
 
  private:
@@ -215,11 +221,12 @@ export class irc_client {
   void push_system_message(std::string_view channel, std::string_view text) {
     auto ch = channel_id(channel);
     push_chunk(std::format(
-        "{}", web_irc::gen::message{.channel = ch, .timestamp = utc_timestamp(), .author = "*", .content = text, .author_class = ""}));
+        "{}", web_irc::gen::message{.ref = web_irc::gen::regular_channel{ch}, .timestamp = utc_timestamp(), .author = "*", .content = text, .author_class = ""}));
   }
 
   void push_status(std::string_view text) {
-    push_system_message("status", text);
+    push_chunk(std::format(
+        "{}", web_irc::gen::message{.ref = web_irc::gen::status_channel{}, .timestamp = utc_timestamp(), .author = "*", .content = text, .author_class = ""}));
   }
 
   void push_channel(std::string_view channel, std::optional<std::string_view> topic = std::nullopt) {
@@ -230,7 +237,7 @@ export class irc_client {
     push_chunk(std::format(
         "{}",
         web_irc::gen::channel{
-            .id = ch, .topic = topic, .form_placeholder = std::format("Message for #{}", ch), .connection_id = connection_id_}));
+            .ref = web_irc::gen::regular_channel{ch}, .topic = topic, .form_placeholder = std::format("Message for #{}", ch), .connection_id = connection_id_}));
   }
 
   struct read_loop_dispatcher {
@@ -316,7 +323,7 @@ export class irc_client {
     }();
 
     push_chunk(std::format("{}",
-                           web_irc::gen::message{.channel = ch,
+                           web_irc::gen::message{.ref = web_irc::gen::regular_channel{ch},
                                                  .timestamp = utc_timestamp(),
                                                  .author = author,
                                                  .content = content,
@@ -469,16 +476,16 @@ export class irc_client {
     auto& users = channel_users_[std::string(channel)];
     if(!users.contains(nick_str)) {
       users.insert(nick_str);
-      push_chunk(std::format("{}", web_irc::gen::user{.channel = ch_id, .user = nick_str}));
+      push_chunk(std::format("{}", web_irc::gen::user{.ref = web_irc::gen::regular_channel{ch_id}, .user = nick_str}));
     } else {
-      push_chunk(std::format("{}", web_irc::gen::user_show{.channel = ch_id, .user = nick_str}));
+      push_chunk(std::format("{}", web_irc::gen::user_show{.ref = web_irc::gen::regular_channel{ch_id}, .user = nick_str}));
     }
   }
 
   void hide_user(std::string_view channel, std::string_view nick) {
     auto ch_id = channel_id(channel);
     std::string nick_str(nick);
-    push_chunk(std::format("{}", web_irc::gen::user_hide{.channel = ch_id, .user = nick_str}));
+    push_chunk(std::format("{}", web_irc::gen::user_hide{.ref = web_irc::gen::regular_channel{ch_id}, .user = nick_str}));
   }
 
   void show_user(std::string_view channel, std::string_view nick) {
@@ -486,7 +493,7 @@ export class irc_client {
     std::string nick_str(nick);
     std::string ch_str(channel);
     channel_users_[ch_str].insert(nick_str);
-    push_chunk(std::format("{}", web_irc::gen::user_show{.channel = ch_id, .user = nick_str}));
+    push_chunk(std::format("{}", web_irc::gen::user_show{.ref = web_irc::gen::regular_channel{ch_id}, .user = nick_str}));
   }
 };
 

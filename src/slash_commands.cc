@@ -45,15 +45,15 @@ export awaitable<void> execute_slash_cmd(irc_client& irc, std::string_view cmd, 
     auto msg_text = rest.substr(target_end + 1);
     if(target.empty()) co_return;
     co_await irc.send_message(target, msg_text);
-    irc.inject_message("status", irc.nickname(), std::format("[-> {}] {}", target, msg_text));
+    irc.inject_status_message(irc.nickname(), std::format("[-> {}] {}", target, msg_text));
   } else if(cmd == "raw") {
     co_await irc.send_raw(std::string(args));
   } else if(cmd == "quit") {
     co_await irc.quit(std::string(args));
-    irc.inject_message("status", "*", "You have quit IRC");
+    irc.inject_status_message("*", "You have quit IRC");
     irc.close();
   } else {
-    irc.inject_message("status", "*", std::format("Unknown command: /{}", cmd));
+    irc.inject_status_message("*", std::format("Unknown command: /{}", cmd));
   }
 }
 } // namespace web_irc

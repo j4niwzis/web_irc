@@ -1,1 +1,1 @@
-<div slot="messages" id="tab-{0}" class="bottom-anchor" aria-hidden="true"></div>
+<div slot="messages" id="{0:anchor_id}" class="bottom-anchor {0:jump_class}" aria-hidden="true"></div>

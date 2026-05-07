@@ -28,16 +28,16 @@ awaitable<void> send_welcome_chunks(boost::beast::tcp_stream& stream, std::strin
   auto ts = utc_timestamp();
   auto page_begin = std::format("{}{}",
                                 gen::page_begin{.title = config.name, .connection_id = uuid},
-                                gen::channel{.id = "status", .topic = {}, .form_placeholder = "Message", .connection_id = uuid});
+                                gen::channel{.ref = gen::status_channel{}, .topic = std::nullopt, .form_placeholder = "", .connection_id = uuid});
   co_await send_stream_chunk(stream, page_begin);
   auto [... content] = std::tuple{config.version, config.copyright, config.url,
                                   "Licensed under the GNU Affero General Public License, Version 3."};
   co_await send_stream_chunk(
       stream,
       std::format("{}{}{}{}",
-                  gen::message{.channel = "status", .timestamp = ts, .author = config.short_name, .content = content, .author_class = ""}...,
+                  gen::message{.ref = gen::status_channel{}, .timestamp = ts, .author = config.short_name, .content = content, .author_class = ""}...,
                   gen::message{
-                      .channel = "status", .timestamp = ts, .author = "*", .content = std::format("Connecting to IRC as {}...", nick), .author_class = ""}));
+                      .ref = gen::status_channel{}, .timestamp = ts, .author = "*", .content = std::format("Connecting to IRC as {}...", nick), .author_class = ""}));
 }
 export awaitable<void> stream_main_page(asio::io_context& io,
                                         std::unordered_map<std::string, connection_entry>& connections,
@@ -96,16 +96,28 @@ export awaitable<void> stream_main_page(asio::io_context& io,
   if(ep) std::rethrow_exception(ep);
 }
 export awaitable<void> send_form_response(boost::beast::tcp_stream& stream,
-                                          unsigned version,
-                                          std::string_view channel,
-                                          std::string_view connection_id) {
+                                           unsigned version,
+                                           std::string_view channel,
+                                           std::string_view connection_id) {
   auto placeholder = form_placeholder(channel);
   http::response<http::string_body> res{http::status::ok, version};
   res.set(http::field::server, config.short_name);
   res.set(http::field::content_type, "text/html; charset=utf-8");
   res.set(http::field::cache_control, "no-store, no-cache, must-revalidate");
   res.keep_alive(false);
-  res.body() = std::format("{}", gen::submit_form{.channel = channel, .placeholder = placeholder, .connection_id = connection_id});
+  res.body() = std::format("{}", gen::submit_form{.ref = gen::regular_channel{channel}, .placeholder = placeholder, .connection_id = connection_id});
+  res.prepare_payload();
+  co_await send_message(stream, std::move(res));
+}
+export awaitable<void> send_status_form_response(boost::beast::tcp_stream& stream,
+                                                  unsigned version,
+                                                  std::string_view connection_id) {
+  http::response<http::string_body> res{http::status::ok, version};
+  res.set(http::field::server, config.short_name);
+  res.set(http::field::content_type, "text/html; charset=utf-8");
+  res.set(http::field::cache_control, "no-store, no-cache, must-revalidate");
+  res.keep_alive(false);
+  res.body() = std::format("{}", gen::submit_form{.ref = gen::status_channel{}, .placeholder = "Message", .connection_id = connection_id});
   res.prepare_payload();
   co_await send_message(stream, std::move(res));
 }
@@ -143,6 +155,32 @@ export awaitable<void> handle_send_message(std::unordered_map<std::string, conne
   }
   auto redirect_url = std::format("/submit_form?channel={}&connection_id={}", channel, connection_id);
   co_await send_redirect(stream, version, redirect_url);
+}
+export awaitable<void> handle_send_status_message(std::unordered_map<std::string, connection_entry>& connections,
+                                                   std::string_view body,
+                                                   boost::beast::tcp_stream& stream,
+                                                   unsigned version) {
+  auto connection_id = extract_value(body, "connection_id");
+  auto text = extract_value(body, "message");
+  auto it = connections.find(connection_id);
+  if(it != connections.end() && !text.empty()) {
+    auto irc = it->second.irc;
+    if(text[0] == '/') {
+      constexpr auto cmd_pattern = ctll::fixed_string{R"(/(\w+)\s*(.*))"};
+      std::string_view cmd;
+      std::string_view args;
+      if(auto m = ctre::match<cmd_pattern>(std::string_view(text))) {
+        cmd = m.template get<1>().to_view();
+        args = m.template get<2>().to_view();
+      }
+      if(!cmd.empty()) {
+        co_await execute_slash_cmd(*irc, cmd, args, "");
+      }
+    } else {
+      irc->inject_status_message(irc->nickname(), text);
+    }
+  }
+  co_await send_redirect(stream, version, std::format("/submit_status_form?connection_id={}", connection_id));
 }
 export awaitable<void> handle_request(asio::io_context& io,
                                       std::unordered_map<std::string, connection_entry>& connections,
@@ -197,6 +235,17 @@ export awaitable<void> handle_request(asio::io_context& io,
       }
     }
     co_await stream_main_page(io, connections, stream, version, std::move(cfg));
+    co_return;
+  }
+  if(req.method() == http::verb::post && path == "/send_status_message") {
+    co_await handle_send_status_message(connections, req.body(), stream, version);
+    co_return;
+  }
+  if(req.method() == http::verb::get && path.starts_with("/submit_status_form")) {
+    auto query = std::string_view(path);
+    if(auto qpos = query.find('?'); qpos != std::string_view::npos) query.remove_prefix(qpos + 1);
+    auto connection_id = extract_value(query, "connection_id");
+    co_await send_status_form_response(stream, version, connection_id);
     co_return;
   }
   if(req.method() == http::verb::post && path.starts_with("/send_message")) {
