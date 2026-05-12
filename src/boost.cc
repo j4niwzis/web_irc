@@ -5,6 +5,7 @@ module;
 #include <boost/asio/connect.hpp>
 #include <boost/asio/deferred.hpp>
 #include <boost/asio/detached.hpp>
+#include <boost/asio/experimental/awaitable_operators.hpp>
 #include <boost/asio/experimental/channel.hpp>
 #include <boost/asio/experimental/parallel_group.hpp>
 #include <boost/asio/io_context.hpp>
@@ -28,6 +29,7 @@ namespace boost {
 namespace asio {
 
 export using asio::awaitable;
+export using asio::detached;
 export using asio::use_awaitable;
 export using asio::co_spawn;
 export using asio::steady_timer;
@@ -43,12 +45,27 @@ export using asio::redirect_error;
 export using asio::socket_base;
 export using asio::deferred;
 
+namespace error {
+
+export using error::try_again;
+export using error::would_block;
+export using error::eof;
+
+}  // namespace error
+
 namespace experimental {
 export using experimental::channel;
 export using experimental::channel_traits;
 export using experimental::make_parallel_group;
 export using experimental::wait_for_one;
 export using experimental::wait_for_one_error;
+
+namespace awaitable_operators {
+
+export using awaitable_operators::operator||;
+
+}
+
 }  // namespace experimental
 
 namespace ip {
@@ -70,7 +87,9 @@ export using ssl::stream;
 
 namespace system {
 export using system::error_code;
-}
+export using system::system_error;
+
+}  // namespace system
 
 namespace beast {
 

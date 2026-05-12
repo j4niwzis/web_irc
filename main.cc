@@ -4,13 +4,20 @@ import web_irc.config;
 import web_irc.http_handlers;
 import std;
 import boost;
+import web_irc.renderer;
+import web_irc.web_client;
+import mirc;
+import web_irc.render;
+
 namespace asio = boost::asio;
 using asio::awaitable;
+
 int main() {
   try {
     asio::io_context io(1);
     std::unordered_map<std::string, web_irc::connection_entry> connections;
     int next_nicid = 1;
+    // NOLINTNEXTLINE
     auto handler = [&](boost::beast::tcp_stream& stream, web_irc::request_t req) -> awaitable<void> {
       co_await web_irc::handle_request(io, connections, next_nicid, stream, std::move(req));
     };
