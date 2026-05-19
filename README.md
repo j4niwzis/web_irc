@@ -2,6 +2,8 @@
 
 A truly monstrous async IRC client using **no JavaScript whatsoever** on the frontend.
 
+<img width="1265" height="880" alt="screenshot" src="https://github.com/user-attachments/assets/561194fe-5151-4945-875f-7715a553e700" />
+
 ## Wait, what?
 
 This is a fully functional multi-channel IRC client that sends and receives messages in real time with no page reloads and no JavaScript.
