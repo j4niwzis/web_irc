@@ -33,9 +33,10 @@ endif()
 
 include(cmake/CPM.cmake)
 
-CPMAddPackage("gh:j4niwzis/mirc@0.3.0")
-
 find_package(Boost 1.88 REQUIRED)
+
+CPMAddPackage("gh:j4niwzis/mirc@0.3.0")
+CPMAddPackage("gh:avast/asio-mutex#main")
 
 # ---- Add source files ----
 
@@ -69,6 +70,7 @@ target_sources(${PROJECT_NAME} PUBLIC FILE_SET CXX_MODULES FILES ${sources})
 target_link_libraries(${PROJECT_NAME} PUBLIC
   Boost::headers
   mirc::mirc
+  asio-mutex-header
 )
 
 

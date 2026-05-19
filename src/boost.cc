@@ -1,4 +1,5 @@
 module;
+#include <async_mutex.hpp>
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/buffers_iterator.hpp>
 #include <boost/asio/co_spawn.hpp>
@@ -14,6 +15,7 @@ module;
 #include <boost/asio/redirect_error.hpp>
 #include <boost/asio/socket_base.hpp>
 #include <boost/asio/steady_timer.hpp>
+#include <boost/asio/strand.hpp>
 #include <boost/asio/streambuf.hpp>
 #include <boost/asio/this_coro.hpp>
 #include <boost/asio/use_awaitable.hpp>
@@ -44,6 +46,9 @@ export using asio::buffer;
 export using asio::redirect_error;
 export using asio::socket_base;
 export using asio::deferred;
+export using asio::strand;
+export using asio::any_io_executor;
+export using asio::dispatch;
 
 namespace error {
 
@@ -130,3 +135,10 @@ namespace std {
 export using std::coroutine_traits;
 
 }
+
+namespace avast::asio {
+
+export using asio::async_mutex;
+export using asio::async_mutex_lock;
+
+}  // namespace avast::asio

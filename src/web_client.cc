@@ -150,6 +150,7 @@ export class web_client : public std::enable_shared_from_this<web_client> {
       co_return;
     }
     std::println("[irc] closing connection");
+    is_closed_ = true;
     client_->close();
     co_await renderer_.close();
   }

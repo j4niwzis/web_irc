@@ -82,7 +82,7 @@ export awaitable<void> stream_main_page(asio::io_context& io,                   
     ep = std::current_exception();
   }
 
-  irc->unsubscribe(sub);
+  co_await irc->unsubscribe(sub);
   co_await irc->close();
 
   connections.erase(uuid);

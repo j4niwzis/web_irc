@@ -12,14 +12,18 @@ export class subscribe_manager {
  public:
   using channel = asio::experimental::channel<void(boost::system::error_code, std::string)>;
   awaitable<std::shared_ptr<channel>> subscribe() {
-    auto ch = std::make_shared<channel>(co_await asio::this_coro::executor);
+    auto ex = co_await asio::this_coro::executor;
+    auto lock = co_await mutex.async_scoped_lock(asio::use_awaitable);
+    auto ch = std::make_shared<channel>(ex);
     subs_.push_back(ch);
     co_return ch;
   }
-  void unsubscribe(std::shared_ptr<channel> ch) {
+  awaitable<void> unsubscribe(std::shared_ptr<channel> ch) {
     if(!ch) {
-      return;
+      co_return;
     }
+    auto lock = co_await mutex.async_scoped_lock(asio::use_awaitable);
+
     ch->close();
     std::erase(subs_, ch);
   }
@@ -45,6 +49,7 @@ export class subscribe_manager {
 
  private:
   awaitable<void> send(auto f) {
+    auto lock = co_await mutex.async_scoped_lock(asio::use_awaitable);
     for(auto it = subs_.begin(); it != subs_.end();) {
       auto& ch = *it;
 
@@ -58,6 +63,7 @@ export class subscribe_manager {
       }
     }
   }
+  avast::asio::async_mutex mutex;
   std::vector<std::shared_ptr<channel>> subs_;
 };
 

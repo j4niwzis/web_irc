@@ -202,8 +202,8 @@ export class renderer {
   awaitable<std::shared_ptr<channel>> subscribe() {
     return subscribe_manager_.subscribe();
   }
-  void unsubscribe(std::shared_ptr<channel> ch) {
-    subscribe_manager_.unsubscribe(std::move(ch));
+  awaitable<void> unsubscribe(std::shared_ptr<channel> ch) {
+    co_await subscribe_manager_.unsubscribe(std::move(ch));
   }
   explicit renderer(std::string_view connection_id = {}) : connection_id_(std::move(connection_id)) {
   }
