@@ -13,7 +13,7 @@ set(CMAKE_CXX_MODULE_STD 1)
 # Note: update this to your new project's name and version
 project(
   web_irc
-  VERSION 0.1.2
+  VERSION 0.2.0
   LANGUAGES CXX
 )
 
