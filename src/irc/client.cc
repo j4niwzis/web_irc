@@ -92,6 +92,12 @@ export class client {
     return std::format_to(it, "{}\r\n", std::move(event));
   }
   template <std::ranges::range T>
+  auto event_work_to(auto it, T range)
+    requires std::same_as<std::ranges::range_value_t<T>, char>
+  {
+    return std::ranges::copy(std::string_view{"\r\n"}, std::ranges::copy(range, it).out);
+  }
+  template <std::ranges::range T>
   auto event_work_to(auto it, T range) {
     return std::format_to(it, "{}", utils::range_string_formatter{std::move(range) | std::views::transform([&](auto event) {
                                                                     return utils::lazy_format(utils::string_tag<"{}\r\n">{},

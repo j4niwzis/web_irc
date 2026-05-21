@@ -23,20 +23,6 @@ import web_irc.config;
 
 namespace web_irc {
 
-boost::system::error_code exception_ptr_to_error_code(std::exception_ptr eptr) {
-  try {
-    if(eptr) {
-      std::rethrow_exception(eptr);
-    }
-  } catch(const boost::system::system_error& e) {
-    return e.code();
-  } catch(const std::exception& e) {
-    return boost::system::error_code(std::make_error_code(std::errc::io_error));
-  }
-
-  return boost::system::error_code();
-}
-
 namespace asio = boost::asio;
 using asio::awaitable;
 using utils::channel_id;
@@ -97,19 +83,15 @@ export class web_client : public std::enable_shared_from_this<web_client> {
       asio::steady_timer timer(ex);
 
       for(;;) {
-        asio::experimental::channel<void(boost::system::error_code)> ch{ex, 1};
+        asio::experimental::channel<void(boost::system::error_code, std::exception_ptr)> ch{ex, 1};
         auto fn = [&] -> awaitable<void> {  // NOLINT
-          std::exception_ptr ptr;
+          std::exception_ptr ptr{};
           try {
             co_await client_->read();
           } catch(...) {
             ptr = std::current_exception();
           }
-          if(ptr) {
-            co_await ch.async_send(exception_ptr_to_error_code(ptr), asio::use_awaitable);
-            co_return;
-          }
-          co_await ch.async_send(boost::system::error_code{}, asio::use_awaitable);
+          co_await ch.async_send(boost::system::error_code{}, ptr, asio::use_awaitable);
         };
         asio::co_spawn(ex, fn(), asio::detached);
 
@@ -118,6 +100,9 @@ export class web_client : public std::enable_shared_from_this<web_client> {
           timer.expires_after(std::chrono::seconds{30});
           auto response = co_await (ch.async_receive(asio::use_awaitable) || timer.async_wait(asio::use_awaitable));
           if(response.index() == 0) {
+            if(auto ptr = std::get<0>(response)) {
+              std::rethrow_exception(ptr);
+            }
             break;
           }
 
