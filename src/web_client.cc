@@ -373,7 +373,7 @@ export class web_client : public std::enable_shared_from_this<web_client> {
   }
   awaitable<void> handle(mirc::event::kick e) {
     if(e.user == client_->config().nickname) {
-      channel_manager_.at(e.user).joined = false;
+      channel_manager_.at(e.channel).joined = false;
     }
     renderer_.render()
         .variant_add([&](auto chunk) {
