@@ -61,62 +61,14 @@ export class web_client : public std::enable_shared_from_this<web_client> {
     auto self = shared_from_this();
     is_running_ = true;
     std::exception_ptr saved_exception = nullptr;
+
     try {
-      auto content = std::to_array<std::string_view>({web_irc::config.version,
-                                                      web_irc::config.copyright,
-                                                      web_irc::config.url,
-                                                      "Licensed under the GNU Affero General Public License, Version 3."});
-      renderer_.render()
-          .page_begin(web_irc::config.name)
-          .status_channel()
-          .event_range(content  //
-                       | std::views::transform([](auto str) {
-                           return [=](auto chunk) {
-                             return chunk.status_message(web_irc::config.short_name, str);
-                           };
-                         }))
-          .status(utils::lazy_format(utils::string_tag<"Connecting to IRC as {}...">{}, nickname()))
-          .send();
-      co_await renderer_.commit();
-
-      auto ex = co_await asio::this_coro::executor;
-      asio::steady_timer timer(ex);
-
-      for(;;) {
-        asio::experimental::channel<void(boost::system::error_code, std::exception_ptr)> ch{ex, 1};
-        auto fn = [&] -> awaitable<void> {  // NOLINT
-          std::exception_ptr ptr{};
-          try {
-            co_await client_->read();
-          } catch(...) {
-            ptr = std::current_exception();
-          }
-          co_await ch.async_send(boost::system::error_code{}, ptr, asio::use_awaitable);
-        };
-        asio::co_spawn(ex, fn(), asio::detached);
-
-        for(;;) {
-          // NOLINTNEXTLINE
-          timer.expires_after(std::chrono::seconds{30});
-          auto response = co_await (ch.async_receive(asio::use_awaitable) || timer.async_wait(asio::use_awaitable));
-          if(response.index() == 0) {
-            if(auto ptr = std::get<0>(response)) {
-              std::rethrow_exception(ptr);
-            }
-            break;
-          }
-
-          renderer_.render().heartbeat().send();
-          co_await renderer_.commit();
-        }
-        while(auto event = client_->try_read_event()) {
-          co_await handle(*std::move(event));
-        }
-        co_await renderer_.commit();
-      }
+      co_await render_startup();
+      co_await event_loop();
     } catch(...) {
       saved_exception = std::current_exception();
     }
+
     is_running_ = false;
     co_await close();
     std::rethrow_exception(saved_exception);
@@ -155,7 +107,78 @@ export class web_client : public std::enable_shared_from_this<web_client> {
   awaitable<void> commit() {
     co_await renderer_.commit();
   }
-  // private:
+
+ private:
+  awaitable<void> render_startup() {
+    auto content = std::to_array<std::string_view>({web_irc::config.version,
+                                                    web_irc::config.copyright,
+                                                    web_irc::config.url,
+                                                    "Licensed under the GNU Affero General Public License, Version 3."});
+
+    renderer_.render()
+        .page_begin(web_irc::config.name)
+        .status_channel()
+        .event_range(content | std::views::transform([](auto str) {
+                       return [=](auto chunk) {
+                         return chunk.status_message(web_irc::config.short_name, str);
+                       };
+                     }))
+        .status(utils::lazy_format(utils::string_tag<"Connecting to IRC as {}...">{}, nickname()))
+        .send();
+
+    co_await renderer_.commit();
+  }
+  awaitable<void> event_loop() {
+    auto ex = co_await asio::this_coro::executor;
+    asio::steady_timer timer(ex);
+
+    for(;;) {
+      co_await wait_with_heartbeat(timer);
+      co_await process_pending_events();
+      co_await renderer_.commit();
+    }
+  }
+  // NOLINTNEXTLINE
+  awaitable<void> wait_with_heartbeat(asio::steady_timer& timer) {
+    auto ex = co_await asio::this_coro::executor;
+    asio::experimental::channel<void(boost::system::error_code, std::exception_ptr)> ch{ex, 1};
+
+    asio::co_spawn(ex, client_->read(), [&](std::exception_ptr ptr) {
+      ch.async_send({}, ptr, asio::detached);
+    });
+    std::exception_ptr saved_exception = nullptr;
+
+    for(;;) {
+      timer.expires_after(std::chrono::seconds{30});
+      auto response = co_await (ch.async_receive(asio::use_awaitable) || timer.async_wait(asio::use_awaitable));
+
+      if(response.index() == 0) {
+        if(auto ptr = std::get<0>(response)) {
+          std::rethrow_exception(ptr);
+        }
+        break;
+      }
+
+      try {
+        renderer_.render().heartbeat().send();
+        co_await renderer_.commit();
+      } catch(...) {
+        saved_exception = std::current_exception();
+      }
+
+      if(saved_exception) {
+        client_->socket().cancel();
+        co_await ch.async_receive(asio::use_awaitable);
+        std::rethrow_exception(saved_exception);
+      }
+    }
+  }
+
+  awaitable<void> process_pending_events() {
+    while(auto event = client_->try_read_event()) {
+      co_await handle(*std::move(event));
+    }
+  }
   awaitable<void> handle(mirc::event_t event) {
     return std::visit(
         [&](auto event) {
